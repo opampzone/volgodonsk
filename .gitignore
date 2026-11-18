@@ -6,4 +6,5 @@ ARCHITECTURE.md
 logs/
 uploads/
 nul
+update_docs.sh
 .env

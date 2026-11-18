@@ -161,7 +161,8 @@ require('./routes/password')(app);
 require('./routes/chat')(app, io);
 require('./routes/admin')(app, io);
 require('./routes/repairmen')(app);
-require('./routes/geo')(app);          // ← новый роут
+require('./routes/geo')(app);
+require('./routes/user')(app);
 
 loadSettings().then(() => {
   server.listen(PORT, () => {

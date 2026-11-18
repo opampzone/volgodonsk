@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
   <link rel="manifest" href="/volgodonsk/manifest.json">
   <meta name="theme-color" content="#4caf50">
-  <link rel="stylesheet" href="/volgodonsk/css/dashboard.css?v=4">
+  <link rel="stylesheet" href="/volgodonsk/css/dashboard.css?v=6">
   <script src="/volgodonsk/js/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -32,8 +32,34 @@
         <p><strong>Город:</strong> <span id="userLocation">—</span></p>
       </div>
     </section>
+
+<!-- БЛОК: Область интересов и предложений (раскрывающийся) -->
+<div class="dashboard-block" id="interests-block">
+    <div class="block-header" onclick="toggleDashboardBlock('interests-block')">
+        <h3>💡 Область интересов и предложений</h3>
+        <span class="toggle-icon">▼</span>
+    </div>
+    <div class="block-content">
+        <div class="block-content-inner">
+            <div class="form-group">
+                <label for="interests-input">Ваши интересы (через запятую)</label>
+                <input type="text" id="interests-input" placeholder="Например: пайка SMD, ремонт БП, Arduino">
+            </div>
+            <div class="form-group">
+                <label for="suggestions-input">Предложения по развитию сообщества</label>
+                <textarea id="suggestions-input" rows="4" placeholder="Поделитесь своими идеями..."></textarea>
+            </div>
+
+            <div id="interests-status" class="interests-status"></div>
+
+            <button class="btn-save" type="button" id="save-interests-btn" onclick="saveInterests()">
+                💾 Сохранить изменения
+            </button>
+        </div>
+    </div>
+</div>
 	
-	    <!-- Загрузка прайс-листа -->
+	    <!-- Загрузка прайс-листа -->		
     <section class="card">
       <h2>📦 Мой прайс-лист (компоненты)</h2>
       <p class="hint">Загрузите Excel-файл (.xlsx, .xls) с колонками: Название, Категория, Количество, Цена, Состояние, Описание.<br>Старые товары будут заменены новыми.</p>
@@ -158,5 +184,75 @@
 <script src="/volgodonsk/js/footer-loader.js"></script>
 
   <script src="/volgodonsk/js/dashboard.js?v=5"></script>
+  
+<script>
+    // Раскрытие/сворачивание блока
+    function toggleDashboardBlock(id) {
+        document.getElementById(id).classList.toggle('expanded');
+    }
+
+    // Загрузка данных из БД
+    async function loadInterests() {
+        try {
+            const response = await fetch('/api/volgodonsk/user/interests', {
+                method: 'GET',
+                credentials: 'include'
+            });
+            if (!response.ok) return;
+            const result = await response.json();
+            if (result.success) {
+                const i = document.getElementById('interests-input');
+                const s = document.getElementById('suggestions-input');
+                if (i) i.value = result.data.interests || '';
+                if (s) s.value = result.data.suggestions || '';
+            }
+        } catch (e) { console.error('Load interests:', e); }
+    }
+
+    // Сохранение в БД
+    async function saveInterests() {
+        const btn = document.getElementById('save-interests-btn');
+        const status = document.getElementById('interests-status');
+        const i = document.getElementById('interests-input');
+        const s = document.getElementById('suggestions-input');
+        if (!btn || !i || !s) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Сохранение...';
+        status.className = 'interests-status';
+        status.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/volgodonsk/user/interests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ interests: i.value, suggestions: s.value })
+            });
+            const result = await response.json();
+            if (result.success) {
+                status.className = 'interests-status success';
+                status.textContent = '✅ ' + (result.message || 'Сохранено');
+            } else {
+                status.className = 'interests-status error';
+                status.textContent = '❌ ' + (result.error || 'Ошибка');
+            }
+        } catch (e) {
+            status.className = 'interests-status error';
+            status.textContent = '❌ Ошибка сети';
+        } finally {
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '💾 Сохранить изменения';
+            }, 1500);
+            setTimeout(() => {
+                if (status.classList.contains('success')) status.style.display = 'none';
+            }, 4000);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadInterests);
+</script>
+  
 </body>
 </html>
