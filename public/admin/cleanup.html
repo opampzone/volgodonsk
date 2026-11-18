@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Обслуживание БД</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🛠️ Обслуживание базы данных</h1>
+            <a href="reports.html" class="back-link">← К жалобам</a>
+        </header>
+
+        <div class="stats-section">
+            <h2>📊 Статистика системы</h2>
+            <div id="stats-container" class="stats-grid">
+                <div class="loading">Загрузка статистики...</div>
+            </div>
+        </div>
+
+        <div class="cleanup-section">
+            <h2>🧹 Операции очистки</h2>
+
+            <div class="cleanup-card">
+                <h3>🖼️ Удалить осиротевшие файлы картинок</h3>
+                <p>Находит файлы, которые не используются ни в одном активном сообщении, и удаляет их.</p>
+                <button class="btn btn-cleanup" id="btn-orphaned">Запустить</button>
+                <div id="orphaned-result" class="result"></div>
+            </div>
+
+            <div class="cleanup-card">
+                <h3>🗑️ Удалить "мягко удалённые" сообщения</h3>
+                <p>Физически удаляет из базы сообщения с is_deleted = true.</p>
+                <button class="btn btn-cleanup" id="btn-soft-deleted">Запустить</button>
+                <div id="soft-deleted-result" class="result"></div>
+            </div>
+
+            <div class="cleanup-card">
+                <h3>📅 Удалить сообщения старше X дней</h3>
+                <p>Безвозвратно удаляет сообщения и жалобы старше указанного числа дней.</p>
+                <div class="input-group">
+                    <input type="number" id="days-input" placeholder="Например: 180" min="1" max="10000">
+                    <button class="btn btn-cleanup" id="btn-old-messages">Удалить</button>
+                </div>
+                <div id="old-messages-result" class="result"></div>
+            </div>
+
+            <div class="cleanup-card">
+                <h3>⚙️ Оптимизация БД (VACUUM)</h3>
+                <p>VACUUM ANALYZE освобождает место после массовых удалений.</p>
+                <button class="btn btn-cleanup" id="btn-vacuum">Запустить</button>
+                <div id="vacuum-result" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        async function loadStats() {
+            const container = document.getElementById('stats-container');
+            try {
+                const resp = await apiFetch('/admin/cleanup/stats');
+                const data = await resp.json();
+                if (!data.success) { container.innerHTML = '<div class="error">Ошибка загрузки</div>'; return; }
+
+                const c = data.counts;
+                container.innerHTML = `
+                    <div class="stat-card"><div class="stat-label">💾 Размер БД</div><div class="stat-value">${escapeHtml(data.dbSize)}</div></div>
+                    <div class="stat-card"><div class="stat-label">👥 Пользователей</div><div class="stat-value">${escapeHtml(String(c.users))}</div></div>
+                    <div class="stat-card"><div class="stat-label">💬 Сообщений в общем чате</div><div class="stat-value">${escapeHtml(String(c.chat_msgs))}</div></div>
+                    <div class="stat-card"><div class="stat-label">🔒 Личных сообщений</div><div class="stat-value">${escapeHtml(String(c.private_msgs))}</div></div>
+                    <div class="stat-card"><div class="stat-label">⚠️ Жалоб</div><div class="stat-value">${escapeHtml(String(c.reports))}</div></div>
+                    <div class="stat-card"><div class="stat-label">🚫 Запрещённых слов</div><div class="stat-value">${escapeHtml(String(c.banned_words))}</div></div>
+                    <div class="stat-card"><div class="stat-label">🗑️ Мягко удалённых (общий)</div><div class="stat-value warning">${escapeHtml(String(c.soft_deleted_chat))}</div></div>
+                    <div class="stat-card"><div class="stat-label">🗑️ Мягко удалённых (личные)</div><div class="stat-value warning">${escapeHtml(String(c.soft_deleted_private))}</div></div>
+                    <div class="stat-card"><div class="stat-label">🖼️ Файлов на диске</div><div class="stat-value">${escapeHtml(String(data.uploads.files))} (${escapeHtml(String(data.uploads.sizeMB))} MB)</div></div>
+                `;
+
+                let tablesHtml = '<h3 style="margin-top:20px;color:#2c3e50;">📋 Размеры таблиц</h3><div class="tables-list">';
+                (data.tables || []).forEach(t => {
+                    tablesHtml += `<div class="table-row"><span>${escapeHtml(t.table)}</span><span>${escapeHtml(t.size)}</span></div>`;
+                });
+                tablesHtml += '</div>';
+                container.innerHTML += tablesHtml;
+            } catch (e) {
+                container.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        }
+
+        async function runAction(path, body, resultEl, successMsg) {
+            resultEl.textContent = '⏳ Выполняется...';
+            resultEl.className = 'result';
+            try {
+                const resp = await apiFetch(path, {
+                    method: 'POST',
+                    body: JSON.stringify(body || {})
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    resultEl.textContent = '✅ ' + successMsg(data);
+                    resultEl.className = 'result success';
+                    loadStats();
+                } else {
+                    resultEl.textContent = '❌ ' + (data.error || 'Ошибка');
+                    resultEl.className = 'result error';
+                }
+            } catch (e) {
+                resultEl.textContent = '❌ Ошибка сети';
+                resultEl.className = 'result error';
+            }
+        }
+
+        document.getElementById('btn-orphaned').addEventListener('click', () => {
+            if (!confirm('Удалить неиспользуемые картинки?')) return;
+            runAction('/admin/cleanup/orphaned-images', {},
+                document.getElementById('orphaned-result'),
+                d => `Удалено файлов: ${d.deleted}`);
+        });
+
+        document.getElementById('btn-soft-deleted').addEventListener('click', () => {
+            if (!confirm('Физически удалить все is_deleted = true?')) return;
+            runAction('/admin/cleanup/soft-deleted', {},
+                document.getElementById('soft-deleted-result'),
+                d => `Удалено: общий ${d.chat}, личные ${d.private}`);
+        });
+
+        document.getElementById('btn-old-messages').addEventListener('click', () => {
+            const days = document.getElementById('days-input').value;
+            if (!days || days <= 0) { alert('Введите количество дней'); return; }
+            if (!confirm(`Безвозвратно удалить всё старше ${days} дней?`)) return;
+            runAction('/admin/cleanup/old-messages', { days },
+                document.getElementById('old-messages-result'),
+                d => `Удалено: общий ${d.chat}, личные ${d.private}, жалобы ${d.reports}`);
+        });
+
+        document.getElementById('btn-vacuum').addEventListener('click', () => {
+            if (!confirm('Выполнить VACUUM ANALYZE?')) return;
+            runAction('/admin/cleanup/vacuum', {},
+                document.getElementById('vacuum-result'),
+                () => 'Оптимизация завершена');
+        });
+
+        loadStats();
+    </script>
+</body>
+</html>

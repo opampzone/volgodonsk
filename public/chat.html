@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Чат | Электроника Волгодонска</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <link rel="stylesheet" href="css/chat.css?v=7">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="chat-layout">
+        <!-- БОКОВАЯ ПАНЕЛЬ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top-nav">
+                <a href="/volgodonsk/dashboard.html" class="nav-btn" title="Личный кабинет">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Кабинет</span>
+                </a>
+                <a href="/volgodonsk/club.html" class="nav-btn" title="Закрытый клуб">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>Клуб</span>
+                </a>
+            </div>
+
+            <div class="sidebar-header">
+                <h3>Чаты</h3>
+            </div>
+
+            <div class="contact-list" id="contact-list">
+                <div class="loading-contacts">Загрузка...</div>
+            </div>
+        </aside>
+
+        <!-- ОСНОВНОЙ ЧАТ -->
+        <main class="main-chat" id="main-chat">
+            <header class="chat-header">
+                <div class="header-info">
+                    <button id="btn-back-mobile" class="mobile-only icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div>
+                        <h2 id="chat-title">Общий чат</h2>
+                        <span id="online-status" class="status-indicator">Подключение...</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-settings" class="icon-btn" title="Настройки чата">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                        </svg>
+                    </button>
+                    <button id="btn-logout" class="icon-btn" title="Выйти">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+
+                    <div id="settings-menu" class="settings-menu hidden">
+                        <div class="settings-item">
+                            <span>🔔 Звук уведомлений</span>
+                            <label class="switch">
+                                <input type="checkbox" id="setting-sound" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-item">
+                            <span>💡 Мигание вкладки</span>
+                            <label class="switch">
+                                <input type="checkbox" id="setting-blink" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-item">
+                            <span>🔤 Размер шрифта</span>
+                            <select id="setting-fontsize">
+                                <option value="small">Маленький</option>
+                                <option value="medium" selected>Средний</option>
+                                <option value="large">Большой</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <span>📞 Показывать мой номер в личных чатах</span>
+                            <label class="switch">
+                                <input type="checkbox" id="setting-phone">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-item settings-admin" id="btn-admin" style="display: none;">
+                            <span>🛡️ Админ-панель</span>
+                            <span>→</span>
+                        </div>
+                        <div class="settings-divider"></div>
+                        <div class="settings-item settings-danger" id="btn-clear-chat">
+                            <span>🗑️ Очистить этот чат</span>
+                            <span>→</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Информационный баннер -->
+            <div id="chat-info-banner" class="chat-info-banner hidden">
+                <div class="info-banner-content">
+                    <span class="info-banner-icon">ℹ️</span>
+                    <span id="chat-info-text" class="info-banner-text"></span>
+                    <button class="info-banner-close" id="info-banner-close" title="Скрыть">×</button>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="chat-messages">
+                <div class="system-message">Загрузка истории...</div>
+            </div>
+
+            <footer class="chat-input-area">
+                <!-- Персональная заметка от админа -->
+                <div id="user-admin-note" class="user-admin-note hidden"></div>
+
+                <form id="message-form" class="message-form">
+                    <label for="image-input" class="attach-btn" title="Прикрепить изображение">📎</label>
+                    <input type="file" id="image-input" accept="image/*" hidden>
+                    <input type="text" id="message-input" placeholder="Введите сообщение..." autocomplete="off">
+                    <button type="submit" id="send-btn" class="send-btn">➤</button>
+                </form>
+                <div id="image-preview" class="image-preview hidden"></div>
+            </footer>
+        </main>
+    </div>
+
+    <script type="module" src="chat_js/main.js?v=29"></script>
+</body>
+</html>

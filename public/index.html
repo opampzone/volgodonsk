@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ремонт электроники — Волгодонск</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
+  <link rel="manifest" href="/volgodonsk/manifest.json">
+  <meta name="theme-color" content="#4caf50">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="/volgodonsk/css/index.css">
+</head>
+<body>
+
+  <header>
+    <h1>🔧 Ремонт электроники</h1>
+    <p>Волгодонск и район</p>
+  </header>
+
+  <div class="filters-box">
+    <div class="filter-group">
+      <label class="filter-label">Тип мастера:</label>
+      <div class="radio-group-inline">
+        <label><input type="radio" name="filterType" value="all" checked> Все</label>
+        <label><input type="radio" name="filterType" value="service_center"> Сервис-центры</label>
+        <label><input type="radio" name="filterType" value="private"> Частники</label>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Специализация:</label>
+      <div class="checkbox-group-grid">
+        <label><input type="checkbox" class="filter-spec" value="Смартфоны и планшеты"> 📱 Смартфоны</label>
+        <label><input type="checkbox" class="filter-spec" value="Компьютерная техника"> 💻 Компьютеры</label>
+        <label><input type="checkbox" class="filter-spec" value="Программный ремонт"> ⚙️ Software</label>
+        <label><input type="checkbox" class="filter-spec" value="Бытовая аппаратура"> 📺 Бытовая</label>
+        <label><input type="checkbox" class="filter-spec" value="Автоэлектроника"> 🚗 Авто</label>
+        <label><input type="checkbox" class="filter-spec" value="Промышленная электроника"> 🏭 Промышленная</label>
+      </div>
+    </div>
+
+    <button class="btn-find" id="applyFiltersBtn">🔍 Найти</button>
+  </div>
+
+  <div id="repairmenList">
+    <div class="loading">Загрузка мастеров...</div>
+  </div>
+<script src="/volgodonsk/js/footer-loader.js"></script>
+  <script src="/volgodonsk/js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Подозрительная активность</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>⚠️ Подозрительная активность</h1>
+            <a href="reports.html" class="back-link">← К жалобам</a>
+        </header>
+
+        <p style="color:#666;margin-bottom:20px;">Пользователи с превышением порога сообщений за интервал.</p>
+
+        <div id="suspicious-list" class="users-list">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const list = document.getElementById('suspicious-list');
+
+        async function loadSuspicious() {
+            try {
+                const resp = await apiFetch('/admin/suspicious-users');
+                const data = await resp.json();
+                if (!data.success) {
+                    list.innerHTML = '<div class="error">Ошибка загрузки</div>';
+                    return;
+                }
+                if (!data.users || data.users.length === 0) {
+                    list.innerHTML = '<div class="empty">✅ Подозрительных не обнаружено</div>';
+                    return;
+                }
+
+                list.innerHTML = data.users.map(u => `
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="user-avatar" style="background:#ff9800;">⚠️</div>
+                            <div class="user-details">
+                                <div class="user-name">
+                                    ${escapeHtml(u.full_name || u.login)}
+                                    ${u.is_banned ? '<span class="banned-badge">Забанен</span>' : ''}
+                                </div>
+                                <div class="user-meta">Логин: ${escapeHtml(u.login)}</div>
+                                <div class="user-meta" style="color:#ff9800;font-weight:600;margin-top:4px;">📨 ${escapeHtml(String(u.total))} сообщений</div>
+                                <div class="user-meta" style="font-size:0.8rem;">Личных: ${escapeHtml(String(u.private_count))} · В общем: ${escapeHtml(String(u.chat_count))}</div>
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-view-chats" data-id="${escapeHtml(u.id)}" data-name="${escapeHtml(u.full_name || u.login)}" style="background:#9c27b0;color:white;margin-bottom:8px;">🔍 Диалоги</button>
+                            ${!u.is_banned ? `<button class="btn btn-ban" data-ban-id="${escapeHtml(u.id)}">🚫 Забанить</button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                list.querySelectorAll('.btn-view-chats').forEach(btn => {
+                    btn.addEventListener('click', () => viewChats(btn.dataset.id, btn.dataset.name));
+                });
+                list.querySelectorAll('[data-ban-id]').forEach(btn => {
+                    btn.addEventListener('click', () => banUser(btn.dataset.banId));
+                });
+            } catch (e) {
+                list.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        }
+
+        async function viewChats(userId, userName) {
+            try {
+                const resp = await apiFetch(`/admin/users/${encodeURIComponent(userId)}/private-chats`);
+                const data = await resp.json();
+                if (!data.success || !data.chats || data.chats.length === 0) {
+                    alert('У пользователя нет личных диалогов');
+                    return;
+                }
+                const chatList = data.chats.map((c, i) =>
+                    `${i + 1}. ${c.partner_name || c.partner_login} — ${c.message_count} сообщ. (${new Date(c.last_message_at).toLocaleString('ru-RU')})`
+                ).join('\n');
+                const sel = prompt(`Диалоги ${userName}:\n\n${chatList}\n\nВведите номер (1-${data.chats.length}):`);
+                const idx = parseInt(sel, 10);
+                if (idx >= 1 && idx <= data.chats.length) {
+                    const c = data.chats[idx - 1];
+                    window.location.href = `chat-view.html?user1=${encodeURIComponent(userId)}&user2=${encodeURIComponent(c.partner_id)}&name1=${encodeURIComponent(userName)}&name2=${encodeURIComponent(c.partner_name || c.partner_login)}`;
+                }
+            } catch (e) { alert('Ошибка'); }
+        }
+
+        async function banUser(id) {
+            if (!confirm('Забанить пользователя?')) return;
+            try {
+                const resp = await apiFetch(`/admin/users/${encodeURIComponent(id)}/ban`, { method: 'POST' });
+                if (resp.ok) loadSuspicious();
+                else alert('Ошибка');
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        loadSuspicious();
+    </script>
+</body>
+</html>

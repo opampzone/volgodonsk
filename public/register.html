@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Регистрация — Электроника Волгодонска</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
+  <link rel="manifest" href="/volgodonsk/manifest.json">
+  <meta name="theme-color" content="#4caf50">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="/volgodonsk/css/register.css">
+</head>
+<body>
+
+  <header>
+    <h1>📝 Регистрация в клубе</h1>
+    <p>Только для жителей Волгодонска и района</p>
+  </header>
+
+  <div id="geoStatus" class="geo-status geo-loading">📍 Определяем ваше местоположение...</div>
+
+  <form id="registerForm" class="hidden">
+    <div class="form-group">
+      <label>Имя / Название организации *</label>
+      <input type="text" id="fullName" required placeholder="Иван Иванов или ООО 'Ремонт'">
+    </div>
+
+    <div class="form-group">
+      <label>Логин (ник) *</label>
+      <input type="text" id="login" required placeholder="ivan_repair">
+    </div>
+
+   <div class="form-group">
+  <label>Пароль * (минимум 8 символов)</label>
+  <div class="password-wrapper">
+    <input type="text" id="password" required minlength="8"  placeholder="Придумайте пароль">
+    <button type="button" class="btn-eye" onclick="togglePassword('password', this)">🙈</button>
+  </div>
+</div>
+
+    <div class="form-group">
+      <label>Email (для восстановления пароля)</label>
+      <input type="email" id="email" placeholder="example@mail.ru">
+    </div>
+
+    <div class="form-group">
+      <label>Ваша роль * (можно несколько)</label>
+      <div class="checkbox-group">
+        <div class="checkbox-item">
+          <input type="checkbox" id="roleProfessional" value="professional">
+          <label for="roleProfessional">🛠️ Профессионал (инженер, КИПиА, ЧПУ, медтехника)</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="roleRepairman" value="repairman">
+          <label for="roleRepairman">🔧 Ремонтник</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="roleHobby" value="hobby">
+          <label for="roleHobby">🎯 Хобби (радиолюбитель)</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="roleSeller" value="seller">
+          <label for="roleSeller">🏪 Продавец (магазин/дилер)</label>
+        </div>
+      </div>
+    </div>
+
+    <div id="repairmanTypeBlock" class="form-group hidden">
+      <label>Тип ремонтника *</label>
+      <div class="radio-group">
+        <label><input type="radio" name="repairmanType" value="service_center"> Сервис-центр</label>
+        <label><input type="radio" name="repairmanType" value="private"> Частник</label>
+      </div>
+    </div>
+
+    <div id="specializationsBlock" class="form-group hidden">
+      <label>Специализация * (можно несколько)</label>
+      <div class="checkbox-group">
+        <div class="checkbox-item">
+          <input type="checkbox" id="specPhones" value="Смартфоны и планшеты">
+          <label for="specPhones">📱 Смартфоны, планшеты</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="specPC" value="Компьютерная техника">
+          <label for="specPC">💻 Компьютерная техника</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="specSoftware" value="Программный ремонт">
+          <label for="specSoftware">⚙️ Программный ремонт (Software)</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="specHome" value="Бытовая аппаратура">
+          <label for="specHome">📺 Бытовая радиоэлектронная аппаратура</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="specAuto" value="Автоэлектроника">
+          <label for="specAuto">🚗 Автомобильная электроника</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="specIndustrial" value="Промышленная электроника">
+          <label for="specIndustrial">🏭 Промышленная электроника</label>
+        </div>
+      </div>
+    </div>
+
+    <div id="resumeBlock" class="form-group hidden">
+      <label>Резюме / специализация (видно всем)</label>
+      <textarea id="resume" placeholder="Ремонт телевизоров, пайка BGA, диагностика..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Телефон * (обязателен для ремонтников)</label>
+      <input type="text" id="phone" placeholder="+7 (900) 123-45-67">
+    </div>
+
+    <div class="form-group">
+      <label>Telegram (ник без @)</label>
+      <input type="text" id="telegram" placeholder="username">
+    </div>
+
+    <div class="form-group">
+      <label>Населённый пункт *</label>
+      <input type="text" id="location" required placeholder="Волгодонск">
+    </div>
+      <!-- Согласие на обработку персональных данных -->
+      <div class="form-group" style="margin-top: 15px; margin-bottom: 20px;">
+        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; color: #aaa; line-height: 1.4;">
+          <input type="checkbox" id="pdConsent" required style="width: auto; margin-top: 3px; accent-color: #4caf50; flex-shrink: 0;">
+          <span>
+            Я даю согласие на обработку моих <a href="/volgodonsk/privacy.html" target="_blank" style="color: #2196f3; text-decoration: underline;">персональных данных</a> в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».
+          </span>
+        </label>
+      </div>
+    <button type="submit" class="btn" id="submitBtn">✅ Зарегистрироваться</button>
+    <div id="statusMessage"></div>
+  </form>
+<script src="/volgodonsk/js/footer-loader.js"></script>
+  <!-- Сначала geo-config.js (общие функции геолокации) -->
+  <script src="/volgodonsk/js/geo-config.js"></script>
+  <!-- Потом register.js (логика формы) -->
+  <script src="/volgodonsk/js/register.js"></script>
+</body>
+</html>

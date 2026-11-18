@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Запрещённые слова</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🚫 Запрещённые слова</h1>
+            <a href="../chat.html" class="back-link">← Вернуться в чат</a>
+        </header>
+
+        <div class="add-word-form">
+            <input type="text" id="new-word" placeholder="Введите слово для блокировки" maxlength="50">
+            <button id="add-btn" class="btn btn-add">Добавить</button>
+        </div>
+
+        <div id="words-list" class="words-list">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const wordsList = document.getElementById('words-list');
+        const newWordInput = document.getElementById('new-word');
+        const addBtn = document.getElementById('add-btn');
+
+        async function loadWords() {
+            try {
+                const resp = await apiFetch('/admin/banned-words');
+                const data = await resp.json();
+                if (!data.success || !data.words || data.words.length === 0) {
+                    wordsList.innerHTML = '<div class="empty">Список пуст</div>';
+                    return;
+                }
+                wordsList.innerHTML = data.words.map(w => `
+                    <div class="word-item">
+                        <span class="word-text">${escapeHtml(w.word)}</span>
+                        <button class="btn btn-delete" data-id="${escapeHtml(String(w.id))}">Удалить</button>
+                    </div>
+                `).join('');
+
+                wordsList.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', () => deleteWord(btn.dataset.id));
+                });
+            } catch (e) {
+                wordsList.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        }
+
+        async function addWord() {
+            const word = newWordInput.value.trim();
+            if (!word) return;
+            try {
+                const resp = await apiFetch('/admin/banned-words', {
+                    method: 'POST',
+                    body: JSON.stringify({ word })
+                });
+                const data = await resp.json();
+                if (resp.ok) { newWordInput.value = ''; loadWords(); }
+                else alert(data.error || 'Ошибка');
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        async function deleteWord(id) {
+            if (!confirm('Удалить это слово из списка?')) return;
+            try {
+                const resp = await apiFetch(`/admin/banned-words/${encodeURIComponent(id)}`, {
+                    method: 'DELETE'
+                });
+                if (resp.ok) loadWords();
+                else alert('Ошибка удаления');
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        addBtn.addEventListener('click', addWord);
+        newWordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addWord(); });
+
+        loadWords();
+    </script>
+</body>
+</html>

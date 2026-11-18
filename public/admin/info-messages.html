@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Информационные сообщения</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>📢 Информационные сообщения</h1>
+            <a href="../chat.html" class="back-link">← Вернуться в чат</a>
+        </header>
+
+        <p class="admin-description">
+            Эти сообщения отображаются вверху области чата для всех пользователей.
+            Оставьте текст пустым, чтобы отключить сообщение.
+        </p>
+
+        <div id="forms-container"></div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const formsContainer = document.getElementById('forms-container');
+
+        const chatTypes = {
+            general: { title: '📢 Общий чат', icon: '📣' },
+            private: { title: '💬 Личные чаты', icon: '🔒' }
+        };
+
+        async function loadAndRender() {
+            try {
+                const resp = await apiFetch('/admin/info-messages');
+                const data = await resp.json();
+                if (!data.success) {
+                    formsContainer.innerHTML = '<div class="error">Ошибка загрузки</div>';
+                    return;
+                }
+                const messages = data.messages || [];
+
+                formsContainer.innerHTML = Object.entries(chatTypes).map(([type, info]) => {
+                    const msg = messages.find(m => m.chat_type === type);
+                    const text = msg ? msg.message_text : '';
+                    const isActive = msg ? msg.is_active : true;
+
+                    return `
+                        <div class="info-form-card">
+                            <h3>${escapeHtml(info.icon)} ${escapeHtml(info.title)}</h3>
+                            <textarea id="text-${escapeHtml(type)}" class="info-textarea" placeholder="Текст сообщения (пусто = отключено)">${escapeHtml(text)}</textarea>
+                            <div class="info-form-controls">
+                                <label class="switch">
+                                    <input type="checkbox" id="active-${escapeHtml(type)}" ${isActive ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="switch-label">Активно</span>
+                                <button class="btn btn-save" data-type="${escapeHtml(type)}">💾 Сохранить</button>
+                            </div>
+                            <div id="status-${escapeHtml(type)}" class="save-status"></div>
+                        </div>
+                    `;
+                }).join('');
+
+                formsContainer.querySelectorAll('.btn-save').forEach(btn => {
+                    btn.addEventListener('click', () => saveMessage(btn.dataset.type));
+                });
+            } catch (e) {
+                formsContainer.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        }
+
+        async function saveMessage(chatType) {
+            const textEl = document.getElementById(`text-${chatType}`);
+            const activeEl = document.getElementById(`active-${chatType}`);
+            const statusEl = document.getElementById(`status-${chatType}`);
+
+            try {
+                const resp = await apiFetch('/admin/info-messages', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        chatType,
+                        messageText: textEl.value.trim(),
+                        isActive: activeEl.checked
+                    })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    statusEl.textContent = '✅ Сохранено';
+                    statusEl.className = 'save-status success';
+                    setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'save-status'; }, 2000);
+                } else {
+                    statusEl.textContent = '❌ ' + (data.error || 'Ошибка');
+                    statusEl.className = 'save-status error';
+                }
+            } catch (e) {
+                statusEl.textContent = '❌ Ошибка сети';
+                statusEl.className = 'save-status error';
+            }
+        }
+
+        loadAndRender();
+    </script>
+</body>
+</html>

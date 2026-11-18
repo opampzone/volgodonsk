@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Клуб — Поиск компонентов</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
+  <link rel="manifest" href="/volgodonsk/manifest.json">
+  <meta name="theme-color" content="#4caf50">
+  <link rel="stylesheet" href="/volgodonsk/css/club.css?v=2">
+</head>
+<body>
+  <header>
+    <h1>🔒 Закрытый клуб</h1>
+    <div class="header-actions">
+      <a href="/volgodonsk/dashboard.html" class="btn-profile">👤 Профиль</a>
+      <button id="logoutBtn" class="btn-logout">🚪 Выйти</button>
+    </div>
+  </header>
+
+  <div class="search-panel">
+    <input type="text" id="searchName" placeholder="🔍 Название компонента (например, STM32, резистор...)">
+    <select id="searchCategory">
+      <option value="">Все категории</option>
+      <option value="Микроконтроллеры">Микроконтроллеры</option>
+      <option value="Резисторы">Резисторы</option>
+      <option value="Конденсаторы">Конденсаторы</option>
+      <option value="Разъемы">Разъемы</option>
+      <option value="Дисплеи">Дисплеи</option>
+      <option value="Инструмент">Инструмент</option>
+      <option value="Другое">Другое</option>
+    </select>
+    <button id="searchBtn" class="btn-search">Найти</button>
+  </div>
+
+  <div id="resultsContainer">
+    <div class="loading">Загрузка компонентов...</div>
+  </div>
+<script src="/volgodonsk/js/footer-loader.js"></script>
+  <script src="/volgodonsk/js/club.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="dummy-csrf-token-for-demo"> <!-- TODO: Заменить на реальный токен с сервера -->
+    <title>Настройки чата</title>
+    <link rel="stylesheet" href="../css/admin.css"> <!-- P1 FIX: Относительный путь для единообразия -->
+    <style>
+        /* --- Базовая сетка и контейнеры --- */
+        .settings-container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .settings-section { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 25px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+            border: 1px solid #f0f0f0;
+        }
+        .settings-section h3 { 
+            color: #2c3e50; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px; 
+            border-bottom: 2px solid #3390ec; 
+            font-size: 1.2rem;
+        }
+
+        /* --- Элементы настройки --- */
+        .setting-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 15px 0; 
+            border-bottom: 1px solid #f0f0f0; 
+            gap: 15px; 
+            flex-wrap: wrap;
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-info { flex: 1; min-width: 200px; }
+        .setting-label { font-weight: 600; color: #2c3e50; margin-bottom: 5px; display: block; }
+        .setting-description { font-size: 0.85rem; color: #666; }
+        .setting-control { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+        
+        .setting-input, .setting-textarea {
+            padding: 8px 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+        .setting-input { width: 240px; }
+        .setting-input:focus, .setting-textarea:focus { 
+            outline: none; 
+            border-color: #3390ec; 
+            box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.1);
+        }
+        .setting-textarea { 
+            width: 300px; 
+            resize: vertical; 
+            min-height: 80px;
+        }
+
+        .btn-save, .btn-cancel {
+            background: #3390ec; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            transition: background 0.2s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-save:hover { background: #2885d8; }
+        .btn-save:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .btn-cancel {
+            background: #9e9e9e;
+        }
+        .btn-cancel:hover { background: #757575; }
+
+        .save-status { 
+            margin-left: 10px; 
+            font-size: 0.85rem; 
+            min-width: 80px; 
+            display: inline-block;
+            text-align: center;
+        }
+        .save-status.success { color: #4caf50; }
+        .save-status.error { color: #f44336; }
+
+        /* --- Кастомный свитч (адаптированный для a11y) --- */
+        .toggle-switch-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: opacity 0.2s;
+        }
+        .toggle-switch { 
+            position: relative; 
+            width: 50px; 
+            height: 26px;
+        }
+        .toggle-switch input { 
+            opacity: 0; 
+            width: 0; 
+            height: 0; 
+            position: absolute;
+        }
+        .toggle-slider { 
+            position: absolute; 
+            cursor: pointer; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background-color: #ccc; 
+            transition: .4s; 
+            border-radius: 26px;
+        }
+        .toggle-slider:before { 
+            position: absolute; 
+            content: ""; 
+            height: 18px; 
+            width: 18px; 
+            left: 4px; 
+            bottom: 4px; 
+            background-color: white; 
+            transition: .4s; 
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider { background-color: #4caf50; }
+        input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+        /* Добавляем видимый фокус для клавиатурной навигации */
+        .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.3);
+        }
+
+        /* --- Состояния страницы --- */
+        .loading { 
+            text-align: center; 
+            padding: 60px; 
+            color: #888; 
+            font-size: 1.1rem;
+        }
+        .loading::after { content: "⏳"; display: block; font-size: 2rem; margin-top: 10px; }
+        .error { 
+            background: #ffebee; 
+            color: #c62828; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border-left: 4px solid #f44336;
+        }
+        .global-loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+        .global-loader.active { display: flex; }
+    </style>
+</head>
+<body>
+    <div class="global-loader" id="global-loader"></div>
+
+    <div class="settings-container">
+        <div id="settings-content">
+            <div class="loading">Загрузка настроек...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const settingsContent = document.getElementById('settings-content');
+        const globalLoader = document.getElementById('global-loader');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        const settingsConfig = {
+            spam_timeout: { label: '⏱️ Антиспам (секунды)', description: 'Интервал между сообщениями', type: 'number', min: 1, max: 60, section: 'Модерация' },
+            spam_threshold: { label: '🚨 Порог блокировки', description: 'Через сколько сообщений блокировать', type: 'number', min: 3, max: 20, section: 'Модерация' },
+            spam_block_duration: { label: '⏸️ Время блокировки (сек)', description: 'На сколько секунд блокировать', type: 'number', min: 10, max: 300, section: 'Модерация' },
+            suspicious_threshold: { label: '⚠️ Порог подозрительности', description: 'Сколько сообщений считать подозрительным', type: 'number', min: 10, max: 200, section: 'Подозрительные' },
+            suspicious_timeframe: { label: '⏰ Временной интервал (мин)', description: 'За какой период считать', type: 'number', min: 5, max: 120, section: 'Подозрительные' },
+            max_file_size_mb: { label: '📎 Максимальный размер файла (МБ)', description: 'Ограничение размера загружаемых файлов', type: 'number', min: 1, max: 10, section: 'Медиа' },
+            image_resize_width: { label: '🖼️ Ширина изображений (px)', description: 'Максимальная ширина после сжатия', type: 'number', min: 400, max: 1920, section: 'Медиа' },
+            image_quality: { label: '🎨 Качество сжатия (%)', description: 'Качество WebP', type: 'number', min: 50, max: 100, section: 'Медиа' },
+            history_limit: { label: '📜 История (сообщений)', description: 'Сколько сообщений загружается', type: 'number', min: 10, max: 200, section: 'Чат' },
+            max_message_length: { label: '📝 Максимальная длина сообщения', description: 'Лимит символов', type: 'number', min: 100, max: 10000, section: 'Чат' },
+            maintenance_mode: { label: '🔧 Режим обслуживания', description: 'Закрыть чат для всех', type: 'toggle', section: 'Система' },
+            registration_open: { label: '📝 Регистрация открыта', description: 'Разрешить новую регистрацию', type: 'toggle', section: 'Система' },
+            chat_title: { label: '💬 Название общего чата', description: 'Отображаемое название', type: 'text', section: 'Чат' },
+            chat_description: { label: '📄 Описание чата', description: 'Краткое описание', type: 'textarea', section: 'Чат' }
+        };
+
+        /** Хранит исходные значения для функции отмены */
+        const originalValues = {};
+
+        /** Утилита: очистка статусов */
+        function clearStatus(statusEl) {
+            statusEl.textContent = '';
+            statusEl.className = 'save-status';
+        }
+
+        async function loadSettings() {
+            globalLoader.classList.add('active');
+            settingsContent.innerHTML = '<div class="loading">Загрузка настроек...</div>';
+            try {
+                const resp = await apiFetch('/admin/settings');
+                const data = await resp.json();
+                if (!data.success) {
+                    settingsContent.innerHTML = '<div class="error">Ошибка загрузки настроек. Пожалуйста, обновите страницу.</div>';
+                    return;
+                }
+
+                const sections = {};
+                Object.entries(data.settings || {}).forEach(([key, info]) => {
+                    const config = settingsConfig[key] || { label: key, section: 'Другое' };
+                    if (!sections[config.section]) sections[config.section] = [];
+                    sections[config.section].push({ key, ...info, config });
+                    originalValues[key] = info.value;
+                });
+
+                renderSettings(sections);
+            } catch (e) {
+                settingsContent.innerHTML = '<div class="error">Ошибка сети при загрузке. Проверьте соединение.</div>';
+            } finally {
+                globalLoader.classList.remove('active');
+            }
+        }
+
+        function renderSettings(sections) {
+            let html = '';
+            Object.entries(sections).forEach(([section, list]) => {
+                html += `<div class="settings-section"><h3>${escapeHtml(section)}</h3>`;
+                list.forEach(s => { html += renderSettingItem(s); });
+                html += '</div>';
+            });
+            settingsContent.innerHTML = html;
+        }
+
+        function renderSettingItem(s) {
+            const key = escapeHtml(s.key);
+            const value = escapeHtml(String(s.value ?? ''));
+            const label = escapeHtml(s.config.label);
+            const desc = escapeHtml(s.config.description || s.description || '');
+            let control = '';
+
+            if (s.config.type === 'toggle') {
+                const checked = String(s.value) === 'true' ? 'checked' : '';
+                control = `
+                    <div class="toggle-switch-wrapper">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-${key}" data-save-key="${key}" ${checked} role="switch">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span id="status-${key}" class="save-status" aria-live="polite"></span>
+                    </div>`;
+            } else if (s.config.type === 'textarea') {
+                control = `
+                    <div class="setting-control">
+                        <textarea id="setting-${key}" class="setting-input setting-textarea" rows="3">${value}</textarea>
+                        <button class="btn-save" data-save-key="${key}">💾 Сохранить</button>
+                        <button class="btn-cancel" data-cancel-key="${key}" style="display:none;">↩ Отмена</button>
+                        <span id="status-${key}" class="save-status" aria-live="polite"></span>
+                    </div>`;
+            } else {
+                const inputType = escapeHtml(s.config.type || 'text');
+                const minAttr = s.config.min !== undefined ? `min="${escapeHtml(String(s.config.min))}"` : '';
+                const maxAttr = s.config.max !== undefined ? `max="${escapeHtml(String(s.config.max))}"` : '';
+                control = `
+                    <div class="setting-control">
+                        <input type="${inputType}" id="setting-${key}" class="setting-input" value="${value}" ${minAttr} ${maxAttr}>
+                        <button class="btn-save" data-save-key="${key}">💾 Сохранить</button>
+                        <button class="btn-cancel" data-cancel-key="${key}" style="display:none;">↩ Отмена</button>
+                        <span id="status-${key}" class="save-status" aria-live="polite"></span>
+                    </div>`;
+            }
+
+            return `
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label for="setting-${key}" class="setting-label">${label}</label>
+                        <div class="setting-description">${desc}</div>
+                    </div>
+                    ${control}
+                </div>`;
+        }
+
+        function attachEventListeners() {
+            // Делегирование для кнопок сохранения
+            settingsContent.addEventListener('click', (e) => {
+                if (e.target.matches('[data-save-key]')) {
+                    const key = e.target.dataset.saveKey;
+                    saveSetting(key, e.target);
+                }
+            });
+
+            // Делегирование для кнопок отмены
+            settingsContent.addEventListener('click', (e) => {
+                if (e.target.matches('[data-cancel-key]')) {
+                    const key = e.target.dataset.cancelKey;
+                    const input = document.getElementById(`setting-${key}`);
+                    if (input) {
+                        input.value = originalValues[key] ?? '';
+                        e.target.style.display = 'none';
+                    }
+                }
+            });
+
+            // Отслеживание изменений для показа кнопки "Отмена"
+            settingsContent.addEventListener('input', (e) => {
+                if (e.target.matches('#settings-content input, #settings-content textarea')) {
+                    const key = e.target.id.replace('setting-', '');
+                    const card = e.target.closest('.setting-item');
+                    if (!card) return;
+
+                    const cancelBtn = card.querySelector(`[data-cancel-key="${key}"]`);
+                    const saveBtn = card.querySelector(`[data-save-key="${key}"]`);
+                    
+                    if (cancelBtn && saveBtn) {
+                        const isChanged = e.target.value !== originalValues[key];
+                        cancelBtn.style.display = isChanged ? 'inline-flex' : 'none';
+                        saveBtn.disabled = !isChanged;
+                    }
+                }
+            });
+        }
+
+        async function saveSetting(key, btnEl) {
+            const statusEl = document.getElementById(`status-${key}`);
+            const inputEl = document.getElementById(`setting-${key}`);
+            const card = btnEl.closest('.setting-item');
+            const cancelBtn = card?.querySelector(`[data-cancel-key="${key}"]`);
+            const toggleWrapper = btnEl.closest('.toggle-switch-wrapper');
+            
+            const isToggle = btnEl.tagName === 'INPUT';
+
+            // Защита от двойного клика
+            btnEl.disabled = true;
+            if (toggleWrapper) {
+                toggleWrapper.style.opacity = '0.5'; // P3 FIX: Визуальный фидбек для toggle
+            } else {
+                const origText = btnEl.textContent;
+                btnEl.textContent = '⏳...';
+            }
+            clearStatus(statusEl);
+
+            // Валидация на клиенте
+            if (inputEl && inputEl.checkValidity && !inputEl.checkValidity()) {
+                statusEl.textContent = '❌ Проверьте данные';
+                statusEl.className = 'save-status error';
+                btnEl.disabled = false;
+                if (toggleWrapper) toggleWrapper.style.opacity = '1';
+                else btnEl.textContent = '💾 Сохранить';
+                return;
+            }
+
+            const value = isToggle 
+                ? (inputEl ? inputEl.checked : false)
+                : (inputEl ? inputEl.value : '');
+
+            try {
+                const resp = await apiFetch('/admin/settings', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken 
+                    },
+                    body: JSON.stringify({ key, value })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        statusEl.textContent = '✅ Сохранено';
+                        statusEl.className = 'save-status success';
+                        originalValues[key] = value;
+                        if (cancelBtn) cancelBtn.style.display = 'none';
+                    } else {
+                        throw new Error('Server error');
+                    }
+                } else {
+                    throw new Error('HTTP Error');
+                }
+            } catch (e) {
+                statusEl.textContent = '❌ Ошибка';
+                statusEl.className = 'save-status error';
+            } finally {
+                // Возврат кнопки в исходное состояние
+                setTimeout(() => {
+                    if (statusEl) clearStatus(statusEl);
+                    if (btnEl) {
+                        btnEl.disabled = false;
+                        if (toggleWrapper) {
+                            toggleWrapper.style.opacity = '1';
+                        } else {
+                            btnEl.textContent = '💾 Сохранить';
+                        }
+                    }
+                }, 2000);
+            }
+        }
+
+        // P0 FIX: Навешиваем обработчики один раз при загрузке модуля
+        attachEventListeners();
+        loadSettings();
+    </script>
+</body>
+</html>

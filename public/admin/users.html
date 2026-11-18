@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Пользователи</title>
+    <link rel="stylesheet" href="../css/admin.css">
+    <style>
+        .admin-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+        }
+        .users-counter {
+            font-size: 13px;
+            color: #666;
+        }
+        .user-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn-ban {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .btn-ban:hover { background: #ffcdd2; }
+        .btn-unban {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        .btn-unban:hover { background: #c8e6c9; }
+        .load-more-wrapper {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>👥 Управление пользователями</h1>
+            <a href="reports.html" class="back-link">← К жалобам</a>
+        </header>
+
+        <div class="admin-controls">
+            <input type="search" id="search-input" class="search-input" placeholder="Поиск по имени, логину, email, телефону или ID...">
+            <select id="status-filter" class="filter-select">
+                <option value="all">Все пользователи</option>
+                <option value="active">Активные</option>
+                <option value="banned">Забаненные</option>
+                <option value="admin">Администраторы</option>
+                <option value="with_note">С заметками</option>
+            </select>
+            <span id="users-counter" class="users-counter"></span>
+        </div>
+
+        <div id="users-list" class="users-list">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const usersList = document.getElementById('users-list');
+        const searchInput = document.getElementById('search-input');
+        const statusFilter = document.getElementById('status-filter');
+        const usersCounter = document.getElementById('users-counter');
+
+        const PAGE_SIZE = 50;
+        let allUsers = [];
+        let filteredUsers = [];
+        let visibleCount = PAGE_SIZE;
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'неизвестно';
+            const date = new Date(dateStr);
+            return isNaN(date.getTime()) ? 'неизвестно' : date.toLocaleDateString('ru-RU');
+        }
+
+        async function loadUsers() {
+            try {
+                const resp = await apiFetch('/admin/users');
+                const data = await resp.json();
+
+                // Разделяем ошибку сервера и пустой список
+                if (!data.success) {
+                    usersList.innerHTML = `<div class="error">Ошибка: ${escapeHtml(data.error || 'неизвестная')}</div>`;
+                    return;
+                }
+
+                allUsers = Array.isArray(data.users) ? data.users : [];
+                applyFilters();
+            } catch (e) {
+                usersList.innerHTML = '<div class="error">Ошибка загрузки списка пользователей</div>';
+            }
+        }
+
+        function applyFilters(resetPagination = true) {
+            if (resetPagination) {
+                visibleCount = PAGE_SIZE;
+            }
+
+            const query = searchInput.value.trim().toLowerCase();
+            const status = statusFilter.value;
+
+            filteredUsers = allUsers.filter(u => {
+                if (status === 'banned' && !u.is_banned) return false;
+                if (status === 'active' && u.is_banned) return false;
+                if (status === 'admin' && !u.is_admin) return false;
+                if (status === 'with_note' && !(u.admin_note && u.admin_note.trim())) return false;
+
+                if (query) {
+                    const haystack = [
+                        u.id,
+                        u.full_name,
+                        u.login,
+                        u.email,
+                        u.phone,
+                        u.admin_note
+                    ].filter(Boolean).join(' ').toLowerCase();
+
+                    if (!haystack.includes(query)) return false;
+                }
+
+                return true;
+            });
+
+            usersCounter.textContent = `Найдено: ${filteredUsers.length} из ${allUsers.length}`;
+            renderUsers();
+        }
+
+        function renderUsers() {
+            if (filteredUsers.length === 0) {
+                usersList.innerHTML = '<div class="empty">Пользователей не найдено</div>';
+                return;
+            }
+
+            const slice = filteredUsers.slice(0, visibleCount);
+
+            const cardsHtml = slice.map(u => {
+                const displayName = u.full_name || u.login || 'Без имени';
+                const initials = displayName.substring(0, 2).toUpperCase();
+                const safeId = escapeHtml(String(u.id));
+
+                const banButton = !u.is_admin ? `
+                    <button type="button" 
+                            class="btn ${u.is_banned ? 'btn-unban' : 'btn-ban'}" 
+                            data-ban-id="${safeId}" 
+                            data-banned="${u.is_banned ? '1' : '0'}">
+                        ${u.is_banned ? '🔓 Разбанить' : '🚫 Забанить'}
+                    </button>
+                ` : '';
+
+                return `
+                    <div class="user-card ${u.is_banned ? 'user-banned' : ''}">
+                        <div class="user-info">
+                            <div class="user-avatar">${escapeHtml(initials)}</div>
+                            <div class="user-details">
+                                <div class="user-name">
+                                    ${escapeHtml(displayName)}
+                                    ${u.is_admin ? '<span class="admin-badge">Админ</span>' : ''}
+                                    ${u.is_banned ? '<span class="banned-badge">Забанен</span>' : ''}
+                                </div>
+                                <div class="user-meta">
+                                    Логин: ${escapeHtml(u.login || '—')}
+                                    ${u.email ? `· Email: ${escapeHtml(u.email)}` : ''}
+                                    ${u.phone ? `· Тел: ${escapeHtml(u.phone)}` : ''}
+                                </div>
+                                <div class="user-note-wrapper">
+                                    <input type="text" class="user-note-input" 
+                                           value="${escapeHtml(u.admin_note || '')}" 
+                                           placeholder="Заметка для пользователя (видит только он)" 
+                                           maxlength="5000">
+                                    <button type="button" class="btn btn-save-note" data-save-id="${safeId}">💾 Сохранить</button>
+                                </div>
+                                <div class="user-meta">Регистрация: ${escapeHtml(formatDate(u.created_at))}</div>
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            ${banButton}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const remaining = filteredUsers.length - slice.length;
+            const loadMoreHtml = remaining > 0 ? `
+                <div class="load-more-wrapper">
+                    <button type="button" class="btn" id="btn-load-more">
+                        Показать ещё (${Math.min(PAGE_SIZE, remaining)} из ${remaining})
+                    </button>
+                </div>
+            ` : '';
+
+            usersList.innerHTML = cardsHtml + loadMoreHtml;
+        }
+
+        searchInput.addEventListener('input', () => applyFilters(true));
+        statusFilter.addEventListener('change', () => applyFilters(true));
+
+        usersList.addEventListener('click', (e) => {
+            if (e.target.id === 'btn-load-more') {
+                visibleCount += PAGE_SIZE;
+                renderUsers();
+                return;
+            }
+
+            const saveBtn = e.target.closest('[data-save-id]');
+            if (saveBtn) {
+                saveUserNote(saveBtn);
+                return;
+            }
+
+            const banBtn = e.target.closest('[data-ban-id]');
+            if (banBtn) {
+                toggleUserBan(banBtn);
+            }
+        });
+
+        usersList.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.classList.contains('user-note-input')) {
+                const card = e.target.closest('.user-card');
+                const btn = card?.querySelector('[data-save-id]');
+                if (btn && !btn.disabled) {
+                    saveUserNote(btn);
+                }
+            }
+        });
+
+        async function saveUserNote(btn) {
+            const card = btn.closest('.user-card');
+            const noteInput = card?.querySelector('.user-note-input');
+            if (!noteInput) return;
+
+            const id = btn.dataset.saveId;
+            const note = noteInput.value.trim();
+            const origText = btn.textContent;
+
+            btn.disabled = true;
+            btn.textContent = '⏳...';
+
+            try {
+                const resp = await apiFetch(`/admin/users/${encodeURIComponent(id)}/note`, {
+                    method: 'POST',
+                    body: JSON.stringify({ note })
+                });
+                const data = await resp.json().catch(() => ({}));
+
+                if (resp.ok && data.success !== false) {
+                    const user = allUsers.find(u => String(u.id) === String(id));
+                    if (user) user.admin_note = note;
+
+                    btn.textContent = '✅';
+                    btn.style.background = '#4caf50';
+                    noteInput.style.borderColor = '#4caf50';
+                } else {
+                    btn.textContent = '❌';
+                    btn.style.background = '#f44336';
+                    alert(data.error || 'Ошибка сохранения');
+                }
+            } catch (e) {
+                btn.textContent = '❌';
+                btn.style.background = '#f44336';
+                alert('Ошибка сети');
+            } finally {
+                setTimeout(() => {
+                    btn.textContent = origText;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                    noteInput.style.borderColor = '';
+                }, 2000);
+            }
+        }
+
+        async function toggleUserBan(btn) {
+            const id = btn.dataset.banId;
+            const shouldBan = btn.dataset.banned === '0';
+            const user = allUsers.find(u => String(u.id) === String(id));
+            const name = user ? (user.full_name || user.login || id) : id;
+            const actionText = shouldBan ? 'забанить' : 'разбанить';
+
+            if (!confirm(`Вы уверены, что хотите ${actionText} пользователя "${name}"?`)) {
+                return;
+            }
+
+            const endpoint = shouldBan
+                ? `/admin/users/${encodeURIComponent(id)}/ban`
+                : `/admin/users/${encodeURIComponent(id)}/unban`;
+
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳...';
+
+            try {
+                const resp = await apiFetch(endpoint, { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+
+                if (resp.ok && data.success !== false) {
+                    if (user) user.is_banned = shouldBan;
+                    applyFilters(false);
+                } else {
+                    alert(data.error || `Не удалось ${actionText} пользователя`);
+                    btn.textContent = origText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('Ошибка сети');
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

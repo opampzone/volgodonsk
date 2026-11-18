@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка — Просмотр диалога</title>
+    <link rel="stylesheet" href="../css/admin.css">
+    <style>
+        .chat-view-container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .chat-view-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 2px solid #3390ec; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .chat-view-header h2 { margin: 0; color: #2c3e50; }
+        .chat-messages-view { max-height: 600px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .chat-message-item { margin-bottom: 12px; padding: 10px; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .chat-message-item.sender-1 { border-left: 3px solid #3390ec; }
+        .chat-message-item.sender-2 { border-left: 3px solid #8e44ad; }
+        .chat-message-item.deleted { opacity: 0.5; font-style: italic; }
+        .message-meta { font-size: 0.8rem; color: #888; margin-bottom: 5px; }
+        .message-text { font-size: 0.95rem; color: #333; white-space: pre-wrap; word-wrap: break-word; }
+        .message-image { max-width: 200px; margin-top: 8px; border-radius: 6px; }
+        .btn-delete-chat { background: #f44336; color: white; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🔍 Просмотр диалога</h1>
+            <a href="reports.html" class="back-link">← К жалобам</a>
+        </header>
+
+        <div id="chat-view-content">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiFetch, requireAdmin, escapeHtml } from './admin-common.js';
+
+        requireAdmin();
+
+        const p = new URLSearchParams(window.location.search);
+        const userId1 = p.get('user1') || '';
+        const userId2 = p.get('user2') || '';
+        const userName1 = p.get('name1') || 'Пользователь 1';
+        const userName2 = p.get('name2') || 'Пользователь 2';
+
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        const chatViewContent = document.getElementById('chat-view-content');
+
+        async function loadChat() {
+            if (!UUID_RE.test(userId1) || !UUID_RE.test(userId2)) {
+                chatViewContent.innerHTML = '<div class="error">Некорректные ID пользователей</div>';
+                return;
+            }
+
+            try {
+                const resp = await apiFetch(`/admin/private-chat/${userId1}/${userId2}`);
+                const data = await resp.json();
+
+                if (!data.success) {
+                    chatViewContent.innerHTML = '<div class="error">Ошибка загрузки диалога</div>';
+                    return;
+                }
+
+                let html = `
+                    <div class="chat-view-container">
+                        <div class="chat-view-header">
+                            <h2>💬 ${escapeHtml(userName1)} ↔ ${escapeHtml(userName2)}</h2>
+                            <div>
+                                <span style="color:#888;font-size:0.9rem;margin-right:15px;">${data.messages.length} сообщений</span>
+                                <button class="btn btn-delete-chat" id="btn-delete-chat">🗑 Удалить весь диалог</button>
+                            </div>
+                        </div>
+                `;
+
+                if (data.messages.length === 0) {
+                    html += '<div class="empty">Сообщений не найдено</div>';
+                } else {
+                    html += '<div class="chat-messages-view">';
+                    data.messages.forEach(msg => {
+                        const isSender1 = msg.sender_id === userId1;
+                        const senderClass = isSender1 ? 'sender-1' : 'sender-2';
+                        const deletedClass = msg.is_deleted ? 'deleted' : '';
+                        const senderName = isSender1 ? userName1 : userName2;
+                        const time = new Date(msg.created_at).toLocaleString('ru-RU');
+                        html += `
+                            <div class="chat-message-item ${senderClass} ${deletedClass}">
+                                <div class="message-meta">
+                                    <strong>${escapeHtml(senderName)}</strong> · ${escapeHtml(time)}
+                                    ${msg.is_deleted ? '· [Удалено]' : ''}
+                                </div>
+                                <div class="message-text">${escapeHtml(msg.text || '(нет текста)')}</div>
+                                ${msg.image_url ? `<img src="${escapeHtml(msg.image_url)}" class="message-image" alt="Изображение" loading="lazy">` : ''}
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                chatViewContent.innerHTML = html;
+
+                document.getElementById('btn-delete-chat').addEventListener('click', deleteChat);
+            } catch (e) {
+                chatViewContent.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        }
+
+        async function deleteChat() {
+            if (!confirm(`⚠️ Удалить ВСЕ сообщения между ${userName1} и ${userName2}? Необратимо!`)) return;
+            try {
+                const resp = await apiFetch(`/admin/delete-chat/${userId1}/${userId2}`, { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) { alert(`✅ Удалено ${data.deleted} сообщений`); loadChat(); }
+                else alert('❌ ' + (data.error || 'Ошибка'));
+            } catch (e) { alert('❌ Ошибка сети'); }
+        }
+
+        loadChat();
+    </script>
+</body>
+</html>

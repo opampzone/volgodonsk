@@ -1,0 +1,864 @@
+/* =========================================
+   1. ПЕРЕМЕННЫЕ И БАЗОВЫЕ НАСТРОЙКИ
+   ========================================= */
+:root {
+    --bg-color: #f0f2f5;
+    --chat-bg: #ffffff;
+    --sidebar-bg: #ffffff;
+    --primary: #3390ec; /* Telegram-like blue */
+    --primary-hover: #2885d8;
+    --text-color: #333333;
+    --text-secondary: #888888;
+    --my-msg-bg: #eeffde;
+    --other-msg-bg: #ffffff;
+    --border-color: #e0e0e0;
+    --danger: #ff4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    /* Фикс для Android: высота равна видимой области экрана при открытой клавиатуре */
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    color: var(--text-color);
+    overflow: hidden; /* Предотвращаем скролл всей страницы */
+}
+
+/* =========================================
+   2. ОСНОВНОЙ МАКЕТ (ДВЕ КОЛОНКИ)
+   ========================================= */
+.chat-layout {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    max-width: 1200px;
+    background: var(--chat-bg);
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================
+   3. БОКОВАЯ ПАНЕЛЬ (КОНТАКТЫ)
+   ========================================= */
+.sidebar {
+    width: 320px;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    background: var(--sidebar-bg);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.sidebar-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background: #f7f9fa;
+}
+
+.sidebar-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.contact-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.contact-item {
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    transition: background 0.15s ease;
+}
+
+.contact-item:hover {
+    background: #f0f4f8;
+}
+
+.contact-item.active {
+    background: var(--primary);
+    color: white;
+}
+
+.contact-item.active .contact-status {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.contact-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: white;
+    margin-right: 12px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.contact-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.contact-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+}
+
+.contact-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =========================================
+   4. ОСНОВНАЯ ОБЛАСТЬ ЧАТА
+   ========================================= */
+.main-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: #e5ddd5; /* Легкий фон как в мессенджерах, можно заменить на var(--bg-color) */
+    background-image: radial-gradient(#d4cfc9 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.chat-header {
+    padding: 10px 15px;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-info h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.status-indicator {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    display: block;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: white;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* =========================================
+   5. ОБЛАСТЬ СООБЩЕНИЙ
+   ========================================= */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.system-message {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 10px 0;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 5px 12px;
+    border-radius: 12px;
+    align-self: center;
+}
+
+.message {
+    max-width: 75%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    position: relative;
+    word-wrap: break-word;
+    animation: fadeIn 0.25s ease-out;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.message.my-message {
+    align-self: flex-end;
+    background: var(--my-msg-bg);
+    border-bottom-right-radius: 4px;
+}
+
+.message.other-message {
+    align-self: flex-start;
+    background: var(--other-msg-bg);
+    border-bottom-left-radius: 4px;
+}
+
+.message-author {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.my-message .message-author {
+    display: none; /* Свое имя не показываем */
+}
+
+.message-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: var(--text-color);
+}
+
+.message img {
+    max-width: 100%;
+    max-height: 300px; /* Ограничение высоты, чтобы картинка не занимала весь экран */
+    border-radius: 8px;
+    margin-top: 6px;
+    cursor: pointer;
+    display: block;
+    object-fit: contain; /* Сохраняем пропорции */
+    width: auto;
+}
+
+.message-meta {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 4px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+}
+
+.my-message .message-meta {
+    color: #5bb358; /* Зеленоватый цвет для своих сообщений */
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message.deleting {
+    animation: fadeOut 0.4s forwards;
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; transform: scale(0.9); height: 0; margin: 0; padding: 0; overflow: hidden; }
+}
+
+/* =========================================
+   6. ОБЛАСТЬ ВВОДА
+   ========================================= */
+.chat-input-area {
+    padding: 10px 15px;
+    background: var(--chat-bg);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.message-form {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.attach-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 8px;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.attach-btn:hover {
+    color: var(--primary);
+}
+
+#message-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    outline: none;
+    font-size: 0.95rem;
+    resize: none;
+    max-height: 120px;
+    transition: border-color 0.2s;
+}
+
+#message-input:focus {
+    border-color: var(--primary);
+}
+
+.send-btn {
+    background: var(--primary);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    font-size: 1.1rem;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.send-btn:hover {
+    background: var(--primary-hover);
+}
+
+.send-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.image-preview {
+    margin-top: 8px;
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview img {
+    max-height: 100px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* =========================================
+   7. УТИЛИТЫ И АДАПТИВНОСТЬ (МОБИЛЬНЫЕ)
+   ========================================= */
+.hidden {
+    display: none !important;
+}
+
+.mobile-only {
+    display: none;
+}
+
+/* Мобильная версия (экраны меньше 768px) */
+@media (max-width: 768px) {
+    .chat-layout {
+        position: relative;
+    }
+
+    .sidebar {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 20;
+    }
+    
+    .sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    .mobile-only {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        padding: 5px;
+        cursor: pointer;
+        color: white;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+    
+    .chat-messages {
+        padding: 10px;
+    }
+}
+
+/* Мигание вкладки (добавляется через JS) */
+.blinking-title {
+    color: var(--danger);
+}
+/* Кнопка удаления сообщения */
+.delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 68, 68, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 10;
+}
+
+.message:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    transform: scale(1.1);
+    background: rgba(255, 68, 68, 1);
+}
+/* Меню настроек */
+.settings-menu {
+    position: absolute;
+    top: 55px;
+    right: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    min-width: 260px;
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-item {
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    transition: background 0.15s;
+}
+
+.settings-item:hover {
+    background: #f5f5f5;
+}
+
+.settings-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.settings-danger {
+    color: var(--danger);
+}
+
+.settings-danger:hover {
+    background: #fff0f0;
+}
+
+.settings-item select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+/* Переключатель (toggle switch) */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Размеры шрифта */
+body.font-small .message-text { font-size: 0.85rem; }
+body.font-medium .message-text { font-size: 0.95rem; }
+body.font-large .message-text { font-size: 1.1rem; }
+body.font-small .contact-name { font-size: 0.85rem; }
+body.font-large .contact-name { font-size: 1.05rem; }
+
+/* Кнопка звонка в шапке чата */
+.chat-phone-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    text-decoration: none;
+    margin-left: 10px;
+    transition: background 0.2s, transform 0.2s;
+    vertical-align: middle;
+}
+
+.chat-phone-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+.chat-phone-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Зелёная точка "онлайн" на аватаре контакта */
+.contact-avatar {
+    position: relative;
+}
+
+.contact-avatar.online::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background: #4caf50;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+}
+/* Навигация в верхней части сайдбара */
+.sidebar-top-nav {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: #f0f2f5;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nav-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.nav-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(51, 144, 236, 0.3);
+}
+
+.nav-btn svg {
+    flex-shrink: 0;
+}
+
+/* Адаптивность для мобильных: на телефоне кнопки становятся ещё компактнее */
+@media (max-width: 768px) {
+    .sidebar-top-nav {
+        padding: 8px;
+        gap: 6px;
+    }
+    .nav-btn span {
+        display: none; /* На телефоне оставляем только иконки для экономии места */
+    }
+    .nav-btn {
+        padding: 10px;
+        justify-content: center;
+    }
+}
+/* Контейнер для кнопок действий на сообщении */
+.message-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message:hover .message-actions {
+    opacity: 1;
+}
+
+.delete-btn, .report-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.delete-btn {
+    background: rgba(255, 68, 68, 0.9);
+}
+
+.report-btn {
+    background: rgba(255, 152, 0, 0.9);
+}
+
+.delete-btn:hover, .report-btn:hover {
+    transform: scale(1.1);
+}
+/* Сообщение, удалённое администратором */
+.admin-deleted-message {
+    opacity: 0.65;
+    background: #f0f0f0 !important;
+    border: 1px dashed #999;
+}
+
+.admin-deleted-text {
+    font-style: italic;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+/* Контейнер кнопок действий */
+.message-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message:hover .message-actions {
+    opacity: 1;
+}
+
+.delete-btn, .report-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.delete-btn { background: rgba(255, 68, 68, 0.9); }
+.report-btn { background: rgba(255, 152, 0, 0.9); }
+
+.delete-btn:hover, .report-btn:hover {
+    transform: scale(1.1);
+}
+/* Информационный баннер в чате */
+.chat-info-banner {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+    border-bottom: 2px solid #ffc107;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    color: #856404;
+    animation: slideDown 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chat-info-banner.hidden {
+    display: none;
+}
+
+.info-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+}
+
+.info-banner-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.info-banner-text {
+    flex: 1;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.info-banner-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: #856404;
+    padding: 0 5px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.info-banner-close:hover {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .chat-info-banner {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+    }
+    .info-banner-text {
+        font-size: 0.8rem;
+    }
+}
+/* Персональное сообщение от админа над полем ввода */
+.user-admin-note {
+    background: #fff3cd;
+    color: #856404;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    text-align: center;
+    border-top: 1px solid #ffc107;
+    border-bottom: 1px solid #ffc107;
+    font-weight: 500;
+    animation: slideDown 0.3s ease;
+}
+
+.user-admin-note.hidden {
+    display: none;
+}
+/* Счётчик непрочитанных в списке контактов */
+.unread-badge {
+    background: #ff4444;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+    margin-left: auto;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(255, 68, 68, 0.4);
+    animation: badgePop 0.3s ease;
+}
+
+@keyframes badgePop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Контакт с непрочитанными — выделяем жирным */
+.contact-item.has-unread .contact-name {
+    font-weight: 700;
+}
+
